@@ -136,17 +136,11 @@ for i in range(1, NUM_DEVICES + 1):
 dim_devices = pd.DataFrame(devices)
 
 # ==============================================================================
-# 🔥 [แก้ไขใหม่] แยก Device ID ระหว่างม้า กับ คนปกติ อย่างเด็ดขาด
+# 🔥 แยก Device ID และ IP ระหว่างม้า กับ คนปกติ อย่างเด็ดขาด
 # ==============================================================================
 all_device_ids = dim_devices["device_id"].tolist()
-
-# ดึง 50 เครื่องแรกมาเป็น "เครื่องเฉพาะสำหรับแก๊งม้า" เท่านั้น
 mule_devices = all_device_ids[:50]
-
-# เครื่องที่เหลือทั้งหมด เป็นของ "คนปกติ"
 normal_devices = all_device_ids[50:]
-
-# สร้าง IP ปลอมสำหรับแก๊งม้าโดยเฉพาะ (สัก 20 IPs)
 mule_ips = [gen_ip() for _ in range(20)]
 # ==============================================================================
 
@@ -214,8 +208,16 @@ non_mule_accounts = [a for a in all_accounts if a not in mule_accounts]
 channels = ["Mobile", "Online", "ATM", "Branch"]
 
 # ==============================================================================
-# 🔥 [แก้ไขใหม่] Shared Device สำหรับม้า ต้องมาจากสระ mule_devices
+# 🔥 [แก้ไขใหม่] สร้าง Dictionary ผูกบัญชีคนปกติกับมือถือประจำตัว
+# คนปกติ 95% มีมือถือ 1 เครื่อง, 5% มี 2 เครื่อง 
+# เพื่อป้องกันไม่ให้คนปกติมีมือถือหลายเครื่อง หรือมีบัญชีโผล่บนเครื่องเดียวกันเยอะๆ
 # ==============================================================================
+normal_account_device_map = {}
+for acc in non_mule_accounts:
+    num_devs = 1 if random.random() < 0.95 else 2
+    normal_account_device_map[acc] = random.sample(normal_devices, num_devs)
+
+# Shared Device สำหรับสร้างรังม้า
 shared_device = random.choice(mule_devices)
 shared_ip = random.choice(mule_ips)
 
@@ -224,7 +226,7 @@ shared_ip = random.choice(mule_ips)
 
 planned_fraud_tx = []  
 
-# 1) Smurfing
+# 1) Smurfing (เหยื่อโอนให้ม้า -> เหยื่อเป็นคนโอน ใช้เครื่องประจำตัวเหยื่อ)
 smurf_mules = mule_accounts[:30]
 for mule in smurf_mules:
     center_ts = random_timestamp_between(START_DATE, END_DATE)
@@ -237,16 +239,16 @@ for mule in smurf_mules:
             ts=ts,
             sender=s,
             receiver=mule,
-            device_id=random.choice(mule_devices), # 🔥 เปลี่ยนเป็น mule_devices
+            device_id=random.choice(normal_account_device_map[s]),  # 🔥 ใช้เครื่องประจำตัวของคนโอน
             amount=random.uniform(100, 500),
-            ip=random.choice(mule_ips),            # 🔥 เปลี่ยนเป็น mule_ips
+            ip=gen_ip(),
             channel="Mobile",
             is_vpn=random.random() < 0.05,
             transaction_province=tprov,
         )
         planned_fraud_tx.append(tx)
 
-# 2) Dormancy Spike
+# 2) Dormancy Spike (เหยื่อโอนก้อนใหญ่ให้ม้า -> เหยื่อเป็นคนโอน)
 sleeper_mules = [m for m in mule_accounts if dim_accounts.loc[dim_accounts["account_id"] == m, "mule_type"].iloc[0] == "Sleeper"]
 for mule in sleeper_mules[:50]:
     avg = float(dim_accounts.loc[dim_accounts["account_id"] == mule, "avg_tx_vol_last_3m"].iloc[0])
@@ -254,35 +256,36 @@ for mule in sleeper_mules[:50]:
     ts = random_timestamp_between(START_DATE, END_DATE)
     sender = random.choice(non_mule_accounts)
     tprov = np.random.choice(high_risk_border_provinces) if random.random() < 0.8 else np.random.choice(normal_provinces, p=province_weights)
-    tx_in = make_transaction(str(uuid.uuid4()), ts, sender, mule, random.choice(mule_devices), spike_amount, random.choice(mule_ips), "Online", transaction_province=tprov)
+    tx_in = make_transaction(str(uuid.uuid4()), ts, sender, mule, random.choice(normal_account_device_map[sender]), spike_amount, gen_ip(), "Online", transaction_province=tprov) # 🔥 ใช้เครื่องประจำตัว
     planned_fraud_tx.append(tx_in)
 
-# 3) Shared Device/IP
+# 3) Shared Device/IP (ม้าโอนออก -> ใช้เครื่องรังม้า)
 for _ in range(15):
     day_center = START_DATE + timedelta(days=random.randint(0, 29))
-    # 🔥 เปลี่ยนเป็นใช้บัญชีม้าในการแชร์เครื่องแทนที่จะเป็นบัญชีคนปกติ
     mules_shared = random.sample(mule_accounts, min(5, len(mule_accounts)))
     for m in mules_shared:
         ts = day_center + timedelta(seconds=random.randint(0, 86399))
         tprov = np.random.choice(high_risk_border_provinces) if random.random() < 0.8 else np.random.choice(normal_provinces, p=province_weights)
-        tx = make_transaction(str(uuid.uuid4()), ts, random.choice(non_mule_accounts), m, shared_device, random.uniform(50, 2000), shared_ip, "Mobile", transaction_province=tprov)
+        tx = make_transaction(str(uuid.uuid4()), ts, m, random.choice(non_mule_accounts), shared_device, random.uniform(50, 2000), shared_ip, "Mobile", transaction_province=tprov)
         planned_fraud_tx.append(tx)
 
-# 4) Pass-through
+# 4) Pass-through (เหยื่อโอนเข้า -> ม้าโอนออก)
 pass_through_mules = mule_accounts[30:90]
 for mule in pass_through_mules:
+    # ขาเข้า: เหยื่อโอนให้ม้า (ใช้เครื่องประจำตัวเหยื่อ)
     recv_sender = random.choice(non_mule_accounts)
     incoming_amount = random.uniform(20000, 80000)
     ts_in = random_timestamp_between(START_DATE, END_DATE)
     tprov_in = np.random.choice(high_risk_border_provinces) if random.random() < 0.8 else np.random.choice(normal_provinces, p=province_weights)
-    tx_in = make_transaction(str(uuid.uuid4()), ts_in, recv_sender, mule, random.choice(mule_devices), incoming_amount, random.choice(mule_ips), "Online", transaction_province=tprov_in)
+    tx_in = make_transaction(str(uuid.uuid4()), ts_in, recv_sender, mule, random.choice(normal_account_device_map[recv_sender]), incoming_amount, gen_ip(), "Online", transaction_province=tprov_in) # 🔥 ใช้เครื่องประจำตัว
     planned_fraud_tx.append(tx_in)
 
+    # ขาออก: ม้าโอนออก (ใช้เครื่องม้า)
     outgoing_amount = incoming_amount * random.uniform(0.98, 0.999)
     ts_out = ts_in + timedelta(seconds=random.randint(10, 299))
     wash_receiver = random.choice(non_mule_accounts)
     tprov_out = np.random.choice(high_risk_border_provinces) if random.random() < 0.8 else np.random.choice(normal_provinces, p=province_weights)
-    tx_out = make_transaction(str(uuid.uuid4()), ts_out, mule, wash_receiver, random.choice(mule_devices), outgoing_amount, random.choice(mule_ips), "Online", transaction_province=tprov_out)
+    tx_out = make_transaction(str(uuid.uuid4()), ts_out, mule, wash_receiver, random.choice(mule_devices), outgoing_amount, random.choice(mule_ips), "Online", transaction_province=tprov_out) 
     planned_fraud_tx.append(tx_out)
 
 # 5) Remaining fraud transactions
@@ -291,16 +294,22 @@ if remaining_needed > 0:
     for _ in range(remaining_needed):
         mule = random.choice(mule_accounts)
         if random.random() < 0.6:
+            # ม้าโอนออก
             sender = mule
             receiver = random.choice(non_mule_accounts)
             amount = random.uniform(500, 50000)
+            dev = random.choice(mule_devices)  
+            ip_addr = random.choice(mule_ips)
         else:
+            # เหยื่อโอนเข้า
             sender = random.choice(non_mule_accounts)
             receiver = mule
             amount = random.uniform(100, 50000)
+            dev = random.choice(normal_account_device_map[sender]) # 🔥 ใช้เครื่องประจำตัว
+            ip_addr = gen_ip()
 
         tprov = np.random.choice(high_risk_border_provinces) if random.random() < 0.8 else np.random.choice(normal_provinces, p=province_weights)
-        tx = make_transaction(str(uuid.uuid4()), random_timestamp_between(START_DATE, END_DATE), sender, receiver, random.choice(mule_devices), amount, random.choice(mule_ips), random.choice(channels), transaction_province=tprov)
+        tx = make_transaction(str(uuid.uuid4()), random_timestamp_between(START_DATE, END_DATE), sender, receiver, dev, amount, ip_addr, random.choice(channels), transaction_province=tprov)
         planned_fraud_tx.append(tx)
 
 if len(planned_fraud_tx) != FRAUD_TX:
@@ -309,7 +318,8 @@ if len(planned_fraud_tx) != FRAUD_TX:
     else:
         while len(planned_fraud_tx) < FRAUD_TX:
             mule = random.choice(mule_accounts)
-            tx = make_transaction(str(uuid.uuid4()), random_timestamp_between(START_DATE, END_DATE), random.choice(non_mule_accounts), mule, random.choice(mule_devices), random.uniform(100, 10000), random.choice(mule_ips), random.choice(channels))
+            sender = random.choice(non_mule_accounts)
+            tx = make_transaction(str(uuid.uuid4()), random_timestamp_between(START_DATE, END_DATE), sender, mule, random.choice(normal_account_device_map[sender]), random.uniform(100, 10000), gen_ip(), random.choice(channels))
             planned_fraud_tx.append(tx)
 
 
@@ -330,8 +340,11 @@ for i, ts in enumerate(timestamps):
             receiver = random.choice(non_mule_accounts)
 
         amount = float(max(0, np.random.exponential(3000)))
-        # 🔥 ใช้ normal_devices และ gen_ip() ปกติสำหรับคนทั่วไป
-        tx = make_transaction(str(uuid.uuid4()), ts, sender, receiver, random.choice(normal_devices), amount, gen_ip(), random.choice(channels), is_vpn=(random.random() < 0.02))
+        
+        # 🔥 ให้ดึงอุปกรณ์ประจำตัวของคนโอนปกติมาใช้
+        assigned_device = random.choice(normal_account_device_map[sender])
+        
+        tx = make_transaction(str(uuid.uuid4()), ts, sender, receiver, assigned_device, amount, gen_ip(), random.choice(channels), is_vpn=(random.random() < 0.02))
         all_tx_records.append(tx)
 
 
