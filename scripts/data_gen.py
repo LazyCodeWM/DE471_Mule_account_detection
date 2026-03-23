@@ -209,15 +209,12 @@ channels = ["Mobile", "Online", "ATM", "Branch"]
 
 # ==============================================================================
 # 🔥 [แก้ไขใหม่] สร้าง Dictionary ผูกบัญชีคนปกติกับมือถือประจำตัว
-# คนปกติ 95% มีมือถือ 1 เครื่อง, 5% มี 2 เครื่อง 
-# เพื่อป้องกันไม่ให้คนปกติมีมือถือหลายเครื่อง หรือมีบัญชีโผล่บนเครื่องเดียวกันเยอะๆ
 # ==============================================================================
 normal_account_device_map = {}
 for acc in non_mule_accounts:
     num_devs = 1 if random.random() < 0.95 else 2
     normal_account_device_map[acc] = random.sample(normal_devices, num_devs)
 
-# Shared Device สำหรับสร้างรังม้า
 shared_device = random.choice(mule_devices)
 shared_ip = random.choice(mule_ips)
 
@@ -226,7 +223,7 @@ shared_ip = random.choice(mule_ips)
 
 planned_fraud_tx = []  
 
-# 1) Smurfing (เหยื่อโอนให้ม้า -> เหยื่อเป็นคนโอน ใช้เครื่องประจำตัวเหยื่อ)
+# 1) Smurfing
 smurf_mules = mule_accounts[:30]
 for mule in smurf_mules:
     center_ts = random_timestamp_between(START_DATE, END_DATE)
@@ -239,7 +236,7 @@ for mule in smurf_mules:
             ts=ts,
             sender=s,
             receiver=mule,
-            device_id=random.choice(normal_account_device_map[s]),  # 🔥 ใช้เครื่องประจำตัวของคนโอน
+            device_id=random.choice(normal_account_device_map[s]),  
             amount=random.uniform(100, 500),
             ip=gen_ip(),
             channel="Mobile",
@@ -248,7 +245,7 @@ for mule in smurf_mules:
         )
         planned_fraud_tx.append(tx)
 
-# 2) Dormancy Spike (เหยื่อโอนก้อนใหญ่ให้ม้า -> เหยื่อเป็นคนโอน)
+# 2) Dormancy Spike
 sleeper_mules = [m for m in mule_accounts if dim_accounts.loc[dim_accounts["account_id"] == m, "mule_type"].iloc[0] == "Sleeper"]
 for mule in sleeper_mules[:50]:
     avg = float(dim_accounts.loc[dim_accounts["account_id"] == mule, "avg_tx_vol_last_3m"].iloc[0])
@@ -256,10 +253,10 @@ for mule in sleeper_mules[:50]:
     ts = random_timestamp_between(START_DATE, END_DATE)
     sender = random.choice(non_mule_accounts)
     tprov = np.random.choice(high_risk_border_provinces) if random.random() < 0.8 else np.random.choice(normal_provinces, p=province_weights)
-    tx_in = make_transaction(str(uuid.uuid4()), ts, sender, mule, random.choice(normal_account_device_map[sender]), spike_amount, gen_ip(), "Online", transaction_province=tprov) # 🔥 ใช้เครื่องประจำตัว
+    tx_in = make_transaction(str(uuid.uuid4()), ts, sender, mule, random.choice(normal_account_device_map[sender]), spike_amount, gen_ip(), "Online", transaction_province=tprov) 
     planned_fraud_tx.append(tx_in)
 
-# 3) Shared Device/IP (ม้าโอนออก -> ใช้เครื่องรังม้า)
+# 3) Shared Device/IP
 for _ in range(15):
     day_center = START_DATE + timedelta(days=random.randint(0, 29))
     mules_shared = random.sample(mule_accounts, min(5, len(mule_accounts)))
@@ -269,18 +266,16 @@ for _ in range(15):
         tx = make_transaction(str(uuid.uuid4()), ts, m, random.choice(non_mule_accounts), shared_device, random.uniform(50, 2000), shared_ip, "Mobile", transaction_province=tprov)
         planned_fraud_tx.append(tx)
 
-# 4) Pass-through (เหยื่อโอนเข้า -> ม้าโอนออก)
+# 4) Pass-through
 pass_through_mules = mule_accounts[30:90]
 for mule in pass_through_mules:
-    # ขาเข้า: เหยื่อโอนให้ม้า (ใช้เครื่องประจำตัวเหยื่อ)
     recv_sender = random.choice(non_mule_accounts)
     incoming_amount = random.uniform(20000, 80000)
     ts_in = random_timestamp_between(START_DATE, END_DATE)
     tprov_in = np.random.choice(high_risk_border_provinces) if random.random() < 0.8 else np.random.choice(normal_provinces, p=province_weights)
-    tx_in = make_transaction(str(uuid.uuid4()), ts_in, recv_sender, mule, random.choice(normal_account_device_map[recv_sender]), incoming_amount, gen_ip(), "Online", transaction_province=tprov_in) # 🔥 ใช้เครื่องประจำตัว
+    tx_in = make_transaction(str(uuid.uuid4()), ts_in, recv_sender, mule, random.choice(normal_account_device_map[recv_sender]), incoming_amount, gen_ip(), "Online", transaction_province=tprov_in) 
     planned_fraud_tx.append(tx_in)
 
-    # ขาออก: ม้าโอนออก (ใช้เครื่องม้า)
     outgoing_amount = incoming_amount * random.uniform(0.98, 0.999)
     ts_out = ts_in + timedelta(seconds=random.randint(10, 299))
     wash_receiver = random.choice(non_mule_accounts)
@@ -294,18 +289,16 @@ if remaining_needed > 0:
     for _ in range(remaining_needed):
         mule = random.choice(mule_accounts)
         if random.random() < 0.6:
-            # ม้าโอนออก
             sender = mule
             receiver = random.choice(non_mule_accounts)
             amount = random.uniform(500, 50000)
             dev = random.choice(mule_devices)  
             ip_addr = random.choice(mule_ips)
         else:
-            # เหยื่อโอนเข้า
             sender = random.choice(non_mule_accounts)
             receiver = mule
             amount = random.uniform(100, 50000)
-            dev = random.choice(normal_account_device_map[sender]) # 🔥 ใช้เครื่องประจำตัว
+            dev = random.choice(normal_account_device_map[sender]) 
             ip_addr = gen_ip()
 
         tprov = np.random.choice(high_risk_border_provinces) if random.random() < 0.8 else np.random.choice(normal_provinces, p=province_weights)
@@ -341,7 +334,6 @@ for i, ts in enumerate(timestamps):
 
         amount = float(max(0, np.random.exponential(3000)))
         
-        # 🔥 ให้ดึงอุปกรณ์ประจำตัวของคนโอนปกติมาใช้
         assigned_device = random.choice(normal_account_device_map[sender])
         
         tx = make_transaction(str(uuid.uuid4()), ts, sender, receiver, assigned_device, amount, gen_ip(), random.choice(channels), is_vpn=(random.random() < 0.02))
@@ -370,7 +362,34 @@ fact_transactions = pd.concat([fact_transactions, dup_rows], ignore_index=True)
 
 ######### Final data hygiene touches #########
 fact_transactions["transaction_timestamp"] = pd.to_datetime(fact_transactions["transaction_timestamp"])
+
+# ==============================================================================
+# 🔥 เพิ่ม Logic: Impossible Travel Flag (โอนข้ามจังหวัดภายใน 2 ชั่วโมง)
+# ==============================================================================
+# 1. เรียงข้อมูลตาม Sender Account Id และเวลา เพื่อหาลำดับการโอน
+fact_transactions = fact_transactions.sort_values(by=["sender_account_id", "transaction_timestamp"])
+
+# 2. จำค่าจังหวัด และ เวลาในการโอนครั้งก่อนหน้า (ของบัญชีเดียวกัน)
+fact_transactions["prev_province"] = fact_transactions.groupby("sender_account_id")["transaction_province"].shift(1)
+fact_transactions["prev_timestamp"] = fact_transactions.groupby("sender_account_id")["transaction_timestamp"].shift(1)
+
+# 3. คำนวณความห่างของเวลาเป็นชั่วโมง
+fact_transactions["hours_since_last_tx"] = (fact_transactions["transaction_timestamp"] - fact_transactions["prev_timestamp"]).dt.total_seconds() / 3600.0
+
+# 4. สร้าง Flag ว่าเป็นการเดินทางที่เป็นไปไม่ได้ (ต่างจังหวัดกัน และห่างกันไม่ถึง 2 ชั่วโมง)
+fact_transactions["impossible_travel_flag"] = (
+    (fact_transactions["transaction_province"] != fact_transactions["prev_province"]) & 
+    (fact_transactions["prev_province"].notna()) & 
+    (fact_transactions["hours_since_last_tx"] < 2.0)
+)
+
+# 5. ลบคอลัมน์ที่ใช้ทดเลขทิ้ง
+fact_transactions = fact_transactions.drop(columns=["prev_province", "prev_timestamp", "hours_since_last_tx"])
+# ==============================================================================
+
 used_mules = set(dim_accounts.loc[dim_accounts["is_mule_label"], "account_id"].tolist())
+
+# สุ่มสลับแถวให้เป็นธรรมชาติ ก่อนนำไป Export
 fact_transactions = fact_transactions.sample(frac=1, random_state=11).reset_index(drop=True)
 
 
