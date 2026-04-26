@@ -1,4 +1,4 @@
-# DE471_Mule_account_detection
+# DE471 — Mule Account Detection
 # การตรวจจับบัญชีม้า (Mule Account Detection)
 โครงการวิเคราะห์ข้อมูลเพื่อตรวจจับธุรกรรมที่ผิดปกติจากบัญชีม้าในระบบธนาคาร
 
@@ -178,30 +178,103 @@ DE471_Mule_account_detection/
 
 ## 8. การวิเคราะห์ข้อมูลเชิงสำรวจ (Exploratory Data Analysis: EDA)
 
-- วิเคราะห์การกระจายของธุรกรรมแยกตามประเภทบัญชีม้า (Burner / Sleeper / Normal)
-- เปรียบเทียบ Spike Ratio, Dwell Time และ Account Age ระหว่างกลุ่มบัญชีม้าและบัญชีปกติ
-- ตรวจสอบการกระจายทางภูมิศาสตร์ของธุรกรรมที่น่าสงสัยรายจังหวัด
-- ใช้กลยุทธ์ Log Scale และ Boxplot สำหรับข้อมูลที่ Imbalanced เพื่อให้มองเห็น Minority Class ได้ชัดเจน
-- ใช้สีที่มีความตัดกันสูง (High Contrast) เพื่อแยกบัญชีม้าออกจากบัญชีปกติในทุกกราฟ
+กลยุทธ์หลักที่ใช้ในการวิเคราะห์ข้อมูลที่มีความไม่สมดุลสูง (Class Imbalance 1:42.6):
+- ใช้ **Log Scale** บน Y-Axis เพื่อให้มองเห็น Minority Class (บัญชีม้า) ได้ชัดเจน แทนที่จะถูกกลืนหายโดย Normal Class
+- ใช้ **Boxplot** เพื่อแสดงการกระจายและ Outlier ของตัวแปรอย่าง Spike Ratio
+- ใช้ **สีที่มีความตัดกันสูง** (น้ำเงิน = ปกติ, แดง = บัญชีม้า) เพื่อเน้น Minority Class ในทุกกราฟ
+- ไม่ลบ Outlier ออก เพราะค่าสุดขั้วคือสัญญาณสำคัญของการฉ้อโกง
+
+### Dashboard ภาพรวม (EDA Overview)
+
+![EDA Dashboard Overview](images/8_dashboard_overview.png)
+*ภาพรวม Dashboard แสดงทุก Visualization ในหน้าเดียว — Dataset: 20,000 ธุรกรรม | Mule: 459 (4%) | Normal: 19,541 (96%) | Ratio 1:24*
+
+---
+
+### กราฟที่ 1 — Who & What: การกระจายตัวของ Class (Class Imbalance)
+
+![Class Distribution](images/1_class_distribution.png)
+*กราฟ Bar Chart แบบ Log Scale แสดงจำนวนธุรกรรมแยกตามประเภทบัญชี*
+
+กราฟนี้ตอบคำถาม **"WHO are the mule accounts?"** โดยแสดงให้เห็นความไม่สมดุลของข้อมูลอย่างชัดเจน บัญชีม้าคิดเป็นเพียง **2.3% ของธุรกรรมทั้งหมด** (459 จาก 20,000) โดยแบ่งเป็น Burner 257 ธุรกรรม และ Sleeper 202 ธุรกรรม ความไม่สมดุลในระดับ **1:42.6** นี้ยืนยันว่าจำเป็นต้องใช้เทคนิคพิเศษในการตรวจจับ เช่น Log Scale และการเน้น Minority Class ในการแสดงผล แทนที่จะใช้กราฟปกติที่บัญชีม้าจะแทบมองไม่เห็น
+
+---
+
+### กราฟที่ 2 — Who & What: ช่องทางธุรกรรมของบัญชีม้าแต่ละประเภท
+
+![Mule Type by Channel](images/3_mule_type_by_channel.png)
+*Stacked Bar Chart แสดงจำนวนธุรกรรมของ Burner และ Sleeper แยกตาม Channel*
+
+กราฟนี้ตอบคำถาม **"WHAT channels do mule accounts use?"** พบว่า Burner Accounts ใช้ช่องทาง **Mobile และ Online** สูงกว่า Sleeper อย่างเห็นได้ชัด ในขณะที่ Sleeper Accounts มีสัดส่วน **ATM และ Online** ที่สูงกว่าเมื่อเทียบกับตัวเอง ซึ่งบ่งชี้ว่าบัญชีม้าทั้งสองประเภทมีกลยุทธ์การหลีกเลี่ยงการตรวจจับที่แตกต่างกัน — Burner เน้นความเร็วผ่าน Mobile ในขณะที่ Sleeper หลีกเลี่ยงการสร้างรูปแบบที่ชัดเจนด้วยการกระจาย Channel
+
+---
+
+### กราฟที่ 3 — What: การกระจายของ Spike Ratio (สัญญาณที่แข็งแกร่งที่สุด)
+
+![Spike Ratio Distribution](images/4_spike_ratio_boxplot.png)
+*Boxplot แบบ Log Scale เปรียบเทียบ Spike Ratio ระหว่างบัญชีปกติ (เหลือง) และบัญชีม้า (แดง) พร้อม Reference Line ที่ Alert Threshold 10x*
+
+กราฟนี้ตอบคำถาม **"WHAT is the quantitative threshold that separates mule transactions?"** และพิสูจน์ได้ว่า Spike Ratio คือสัญญาณที่ทรงพลังที่สุดในชุดข้อมูลนี้ — บัญชีม้ามีค่าเฉลี่ย Spike Ratio **44 เท่า** เมื่อเทียบกับ **5 เท่า** ของบัญชีปกติ กราฟ Boxplot แบบ Log Scale ช่วยให้เห็นความแตกต่างที่ชัดเจน โดย Median ของบัญชีม้าพุ่งอยู่เหนือ Alert Threshold (10x) อย่างเด่นชัด ในขณะที่ Median ของบัญชีปกติอยู่ต่ำกว่า 10x อย่างมีนัยสำคัญ
+
+---
+
+### กราฟที่ 4 — Where: ความเสี่ยงทางภูมิศาสตร์รายจังหวัด
+
+![Geographic Risk Map](images/6_geographic_map.png)
+*Choropleth Map แสดงอัตราส่วน Mule Rate รายจังหวัดทั่วประเทศไทย (สีแดงเข้ม = ความเสี่ยงสูง)*
+
+กราฟนี้ตอบคำถาม **"WHERE should fraud prevention efforts be prioritized geographically?"** ผลการวิเคราะห์พบว่าความเสี่ยงกระจายตัวทั่วทุกภูมิภาค **โดยไม่มีจังหวัดใดจุดเดียวที่เป็น Hotspot หลัก** รูปแบบนี้บ่งชี้ว่าเครือข่ายบัญชีม้าปฏิบัติการในหลายภูมิภาคพร้อมกัน ซึ่งหมายความว่าการใช้ Geographic Profiling เพียงอย่างเดียวไม่เพียงพอ และจำเป็นต้องใช้ร่วมกับ Behavioral Signal อื่นๆ
+
+---
+
+### กราฟที่ 5 — Where & Who: Account Age vs. Transaction Volume (Scatter Plot)
+
+![Account Age Scatter Plot](images/5_account_age_scatter.png)
+*Scatter Plot แสดงความสัมพันธ์ระหว่าง Account Age Days (แกน X) และ Avg Tx Vol Last 3M (แกน Y) พร้อม Risk Threshold ที่ 500 วัน*
+
+กราฟนี้ตอบคำถาม **"WHICH accounts exhibit suspicious behavior based on account age?"** บัญชีม้า (จุดสีแดง) กระจุกตัวอยู่ใน **ช่วง 0–500 วัน** อย่างเด่นชัด ยืนยันว่าบัญชีที่เพิ่งเปิดใหม่มีความเสี่ยงสูงที่สุดโดยไม่ขึ้นกับปริมาณธุรกรรม นอกจากนี้ยังพบว่าบัญชีม้ามีการกระจายตัว Avg Tx Vol ที่หลากหลาย ทำให้ไม่สามารถใช้ Volume เพียงอย่างเดียวในการตัดสิน จำเป็นต้องใช้ Account Age ร่วมด้วยเสมอ
+
+---
+
+### กราฟที่ 6 — When & How: Dormancy Spike และ Zero Balance Rate
+
+![Dormancy Spike and Zero Balance](images/2_dormancy_spike_zero_balance.png)
+*Bar Chart เปรียบเทียบ Dormancy Spike Rate และ Zero Balance Cashout Rate ระหว่างบัญชีปกติ (น้ำเงิน) และบัญชีม้า (แดง) พร้อม Reference Line ที่ Alert Threshold 50%*
+
+กราฟนี้ตอบคำถาม **"HOW do mule accounts drain funds after receiving them?"** ผลการวิเคราะห์พบความแตกต่างที่ชัดเจนมาก:
+- **Dormancy Spike Rate:** บัญชีม้า **77%** vs บัญชีปกติ **24%** — สูงกว่า Alert Threshold (50%) อย่างมีนัยสำคัญ
+- **Zero Balance Cashout Rate:** บัญชีม้า **61%** vs บัญชีปกติ **31%** — ยืนยันพฤติกรรมดูดเงินออกจนเกลี้ยงบัญชี
+
+ทั้งสองสัญญาณนี้เกินค่า Alert Threshold 50% ในกลุ่มบัญชีม้า ซึ่งหมายความว่าสามารถนำไปใช้เป็นกฎการตรวจจับได้ทันที
+
+---
+
+### กราฟที่ 7 — When: Dwell Time (หน้าต่างการหลีกเลี่ยง 5 นาที)
+
+![Dwell Time Distribution](images/7_dwell_time.png)
+*Histogram แสดงการกระจายของ Dwell Time (นาที) หลังจากรับเงินเข้า แยกระหว่างบัญชีม้า (แดง) และบัญชีปกติ (น้ำเงิน) พร้อม Reference Line ที่ 5-Minute Evasion Window*
+
+กราฟนี้ตอบคำถาม **"WHEN are illicit funds moved out of the suspected account?"** และเป็นหลักฐานที่แข็งแกร่งที่สุดของพฤติกรรม Rapid Transit — เงินในบัญชีม้า **54% ถูกโอนออกภายใน 4 นาที** ของการรับ (43 จาก 79 ธุรกรรม) กราฟแสดงให้เห็นชัดว่าบัญชีม้า (สีแดง) กระจุกตัวอยู่ที่ช่วง 1–4 นาที อย่างหนาแน่น ในขณะที่บัญชีปกติ (สีน้ำเงิน) กระจายตัวออกไปในช่วงเวลาที่นานกว่า ยืนยันว่า **Dwell Time < 5 นาที** เป็น Alert Rule ที่ใช้งานได้จริง
 
 ---
 
 ## 9. ผลการวิเคราะห์ (Key Findings and Insights)
 
-### ความเสี่ยงทางภูมิศาสตร์ (Geographic Risk)
-ความเสี่ยงการฉ้อโกงกระจายตัวทั่วจังหวัดต่างๆ ในประเทศไทย โดยไม่มีจังหวัดใดจุดเดียวที่โดดเด่นออกมา รูปแบบนี้บ่งชี้ว่าเครือข่ายบัญชีม้าปฏิบัติการในหลายภูมิภาคพร้อมกัน ทำให้การใช้ Geographic Profiling เพียงอย่างเดียวไม่เพียงพอในการตรวจจับ
+### สรุปผลการวิเคราะห์จากทุก Visualization
 
-### Account Profiling
-บัญชีม้า ทั้งประเภท Burner (257 ธุรกรรม) และ Sleeper (202 ธุรกรรม) กระจุกตัวอยู่ในบัญชีที่มีอายุ **0–500 วัน** เป็นหลัก นอกจากนี้ บัญชีม้ายังมีค่า Spike Ratio เฉลี่ยสูงถึง **44 เท่า** เมื่อเทียบกับ **5 เท่า** ของบัญชีปกติ ยืนยันว่าการวิเคราะห์เพียงปริมาณธุรกรรมอย่างเดียวไม่เพียงพอ จำเป็นต้องใช้การวิเคราะห์พฤติกรรมหลายมิติร่วมกัน
-
-### Critical Evasion Window
-รูปแบบ Rapid Transit พบได้อย่างเด่นชัดในบัญชีที่ถูก Flag — เงินที่รับเข้ามามักถูกโอนออกภายใน **5 นาที** ของการรับ ยืนยันด้วยตัวเลขสำคัญ:
-- **77%** ของธุรกรรมบัญชีม้าทำให้เกิด Dormancy Spike Flag เทียบกับ **24%** ของบัญชีปกติ
-- **61%** ของบัญชีม้าแสดงพฤติกรรม Zero Balance Cashout เทียบกับ **31%** ของบัญชีปกติ
+| # | Finding | ตัวเลขสำคัญ | นัยสำคัญ |
+| :---: | :--- | :--- | :--- |
+| 1 | **Class Imbalance รุนแรง** | Mule 2.3% (459/20,000) อัตราส่วน 1:42.6 | จำเป็นต้องใช้ Log Scale และเทคนิค Imbalanced Data |
+| 2 | **Spike Ratio คือสัญญาณที่แข็งแกร่งที่สุด** | Mule เฉลี่ย 44x vs Normal 5x | ส่วนใหญ่ของบัญชีม้าเกิน Alert Threshold 10x |
+| 3 | **Account Age ≤ 500 วัน คือกลุ่มเสี่ยงหลัก** | Mule กระจุกใน 0–500 วัน | บัญชีใหม่ + Spike Ratio สูง = ความเสี่ยงสูงมาก |
+| 4 | **Dormancy Spike** | 77% ของ Mule vs 24% ของ Normal | เกิน Alert Threshold 50% อย่างมีนัยสำคัญ |
+| 5 | **Zero Balance Cashout** | 61% ของ Mule vs 31% ของ Normal | ยืนยันพฤติกรรมดูดเงินออกจนหมดบัญชี |
+| 6 | **5-Minute Evasion Window** | 54% ของ Mule โอนออกภายใน 4 นาที | หน้าต่างการแทรกแซงแคบมาก ต้องการ Near Real-Time Alert |
+| 7 | **ไม่มี Geographic Hotspot เดียว** | ความเสี่ยงกระจายทั่วประเทศ | Geographic Profiling ต้องใช้ร่วมกับ Behavioral Signal เสมอ |
 
 ---
 
-## บทสรุป (Conclusion)
+## 📝 บทสรุป (Conclusion)
 
 จากการวิเคราะห์ข้อมูล สามารถสรุปได้ว่าบัญชีม้าสามารถระบุได้จากการรวมกันของสัญญาณพฤติกรรม ดังนี้
 
@@ -213,7 +286,7 @@ DE471_Mule_account_detection/
 
 ---
 
-## ข้อเสนอแนะและผลกระทบ (Recommendation / Action and Impact)
+## 📝 ข้อเสนอแนะและผลกระทบ (Recommendation / Action and Impact)
 
 ### Rule-Based Detection Alerts
 
@@ -239,7 +312,7 @@ DE471_Mule_account_detection/
 
 ---
 
-## วิธีการรันโปรแกรม (How to Run)
+## 🚀 วิธีการรันโปรแกรม (How to Run)
 
 ```bash
 # 1. ติดตั้ง Dependencies
