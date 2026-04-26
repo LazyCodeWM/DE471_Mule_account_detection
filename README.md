@@ -1,6 +1,5 @@
 # DE471 — Mule Account Detection
-# การตรวจจับบัญชีม้า (Mule Account Detection)
-โครงการวิเคราะห์ข้อมูลเพื่อตรวจจับธุรกรรมที่ผิดปกติจากบัญชีม้าในระบบธนาคาร
+Data Analytics project for detecting suspicious mule account activity in a simulated Thai retail banking environment.
 
 **Designed by:** MTN (MUMTENGNHONG) GROUP  
 **Date:** 18 January 2026  
@@ -8,332 +7,320 @@
 
 ---
 
-## 1. บทนำ (Introduction / Problem Statement)
+## 1. Problem Statement/Background
 
-ประเทศไทยกำลังเผชิญกับการเพิ่มขึ้นอย่างรวดเร็วของกลโกงแบบ **Authorized Push Payment (APP) Scam** ซึ่งเป็นรูปแบบการฉ้อโกงที่เหยื่อถูกหลอกให้โอนเงินด้วยความสมัครใจ เนื่องจากธุรกรรมเหล่านี้ถูกเริ่มต้นโดยลูกค้าที่ถูกต้องตามกฎหมาย ระบบตรวจจับการทุจริตแบบเดิมจึงไม่สามารถตรวจพบได้อย่างมีประสิทธิภาพ
+Thailand is facing a rapid increase in **Authorized Push Payment (APP) scams**, where victims are manipulated into voluntarily transferring money. Since these transactions are initiated by legitimate customers, traditional fraud detection systems are unable to detect them effectively.
 
-หลังจากที่เหยื่อโอนเงินไปแล้ว มิจฉาชีพจะใช้ **บัญชีม้า (Mule Accounts)** เพื่อรับเงินและรีบโอนต่อออกไปภายในเวลาเพียงไม่กี่นาที ทำให้ธนาคารมีโอกาสน้อยมากในการระงับธุรกรรมหรือกู้คืนเงิน ในปัจจุบันธนาคารยังทำงานในลักษณะ **Reactive** คือรอให้เกิดความเสียหายก่อนแล้วจึงแก้ไข
-
-ดังนั้น โครงการนี้จึงมีความจำเป็นในการพัฒนาระบบวิเคราะห์ข้อมูลเชิงรุก (Proactive Data Analytics) เพื่อตรวจจับธุรกรรมที่เกี่ยวข้องกับบัญชีม้าในลักษณะใกล้เคียงเวลาจริง (Near Real-Time) ก่อนที่เงินจะถูกโอนออกนอกระบบ
+Fraudsters use mule accounts to quickly transfer funds out within minutes, leaving banks little opportunity for recovery. As banks currently operate in a reactive manner, a **proactive data analytics solution** is required to detect scam-induced mule transactions in near real-time — before funds are dispersed beyond recovery.
 
 ---
 
-## 2. วัตถุประสงค์ (SMART Objectives / Value Propositions)
+## 2. SMART Objectives / Value Propositions
 
 **SMART Objectives:**  
-พัฒนา **Proactive Mule Account Detection Dashboard** ให้แล้วเสร็จภายใน Q2 2026 โดยระบบสามารถตรวจจับกิจกรรมของบัญชีม้าที่น่าสงสัยได้ **ภายใน 30 นาที** โดยใช้ข้อมูลธุรกรรมที่มีอยู่แล้ว บรรลุค่า **Recall ≥ 80%** และ **False Positive Rate ≤ 5%** เพื่อรองรับการตอบสนองปฏิบัติการที่รวดเร็วขึ้น และลดความสูญเสียทางการเงินจาก APP Scam
+The objective of this project is to develop a **Proactive Mule Account Detection Dashboard** by Q2 2026. The solution aims to detect suspicious mule account activities **within 30 minutes** using existing transaction data, achieving a **Recall of ≥80%** and a **False Positive Rate of ≤5%**, in order to support faster operational response and minimize financial losses from APP scams.
 
 **Value Propositions:**
 
-- **Proactive Detection:** เปลี่ยนจากการทำงานแบบ Reactive เป็น Proactive โดยสามารถตั้ง Alert ได้ก่อนที่เงินจะถูกโอนออกนอกระบบทั้งหมด
-- **Faster Operational Response:** ลดเวลาการตอบสนองของทีม Fraud Operations ด้วย Dashboard ที่แสดงบัญชีที่มีความเสี่ยงสูงในแบบ Near Real-Time
-- **AML Compliance:** รองรับข้อกำหนดของธนาคารแห่งประเทศไทยและ AMLO ในด้านการรายงานธุรกรรมที่น่าสงสัย (STR)
+- **Proactive Detection:** Shift from reactive to proactive operations — flag suspicious accounts before funds are fully dispersed out of the system.
+- **Faster Operational Response:** Reduce response time for the Fraud Operations team through a Near Real-Time Dashboard that surfaces the highest-risk accounts automatically.
+- **AML Compliance:** Support Bank of Thailand and AMLO requirements for Suspicious Transaction Reporting (STR).
 
 ---
 
-## 3. คำถามและสมมติฐาน (Questions / Hypothesis)
+## 3. Questions/Hypothesis
 
-### คำถามเชิงวิเคราะห์ (5W1H Analytical Questions)
+### 5W1H Analytical Questions
 
 **Who & What**
-- บัญชีม้าประเภท Burner และ Sleeper แตกต่างจากบัญชีปกติอย่างไรในเชิงพฤติกรรมธุรกรรม?
-- ระดับ Spike Ratio ที่เท่าไรที่สามารถใช้แยกแยะบัญชีม้าออกจากลูกค้าที่โอนเงินสูงตามปกติได้?
+- How do mule accounts (Burner and Sleeper) differ from normal accounts in terms of transaction behavior?
+- At what Spike Ratio threshold can a mule transaction be reliably distinguished from a legitimate high-value transfer?
 
 **When & How**
-- เงินที่รับเข้ามาในบัญชีม้าถูกโอนออกภายในเวลานานเท่าใด และมีช่วงเวลา (Dwell Time) ที่สั้นแค่ไหนที่บ่งบอกพฤติกรรม Rapid Transit?
-- บัญชีม้าประเภท Sleeper มีช่วงเวลาพักการใช้งานนานเพียงใดก่อนที่จะถูกเปิดใช้งานเพื่อทำธุรกรรมขนาดใหญ่?
+- How quickly are incoming funds transferred out? What Dwell Time threshold identifies Rapid Transit behavior used to evade detection?
+- How long do Sleeper mule accounts remain dormant before being activated for a large transaction?
 
 **Where**
-- จังหวัดหรือพื้นที่ใดในประเทศไทยที่มีความเข้มข้นของธุรกรรมที่เชื่อมโยงกับบัญชีม้าสูงที่สุด?
-- การโอนเงินข้ามจังหวัดภายในเวลา 2 ชั่วโมง (Impossible Travel) มีความสัมพันธ์กับบัญชีม้าหรือไม่?
+- Which regions/provinces show the highest fraud risk and concentration of mule-linked transactions?
+- Does cross-province activity within 2 hours (Impossible Travel) correlate with confirmed mule labels?
 
 **Why**
-- การระบุพฤติกรรมเหล่านี้ช่วยลดความสูญเสียจาก APP Scam และเพิ่มความปลอดภัยในระบบธนาคารได้อย่างไร?
+- How can identifying these behaviors reduce scam losses and enhance banking security?
 
-### สมมติฐาน (Hypothesis)
+### Hypothesis
 
-สามารถตรวจจับบัญชีม้าได้โดยใช้การรวมกันของสัญญาณพฤติกรรม (Behavioral Signals) จากข้อมูลธุรกรรมที่มีอยู่ ได้แก่ Spike Ratio, Dwell Time, การใช้งาน Device/IP ร่วมกัน และรูปแบบการโอนเงินข้ามจังหวัด โดยไม่จำเป็นต้องอาศัยข้อมูลส่วนบุคคลหรือข้อมูลภายนอกเพิ่มเติม
-
----
-
-## 4. แหล่งที่มาของข้อมูล (Data Source)
-
-- **Dataset:** ชุดข้อมูลสังเคราะห์ (AI-Generated Synthetic Dataset) จำลองสภาพแวดล้อมธนาคารค้าปลีกในประเทศไทย
-- **ขนาด:** 20,000 ธุรกรรม | 6,000 บัญชี | 5,000 ลูกค้า | 2,400 อุปกรณ์
-- **อัตราส่วนการฉ้อโกง:** ~5% ของธุรกรรมทั้งหมด | ~4% ของบัญชีทั้งหมดถูกระบุเป็น Mule
-- **ช่วงเวลา:** ข้อมูลย้อนหลัง 30 วัน
-- **Schema:** Star Schema — 1 Fact Table + 3 Dimension Tables
+Mule accounts can be detected using a combination of behavioral signals derived from existing transaction data — specifically Spike Ratio, Dwell Time, shared Device/IP usage, and geographic anomalies — without requiring additional personal data or external data sources.
 
 ---
 
-## 5. โครงสร้างของชุดข้อมูล — Data Dictionary
+## 4. Key Metrics/Attributes
 
-### `dim_customers` — ข้อมูลลูกค้า
+### Engineered Features
 
-| ชื่อคอลัมน์ | ประเภทข้อมูล | คำอธิบาย | ค่าที่เป็นไปได้ |
-| :--- | :--- | :--- | :--- |
-| **customer_id** | String | รหัสลูกค้าเฉพาะ | `C1xxxxx` |
-| **age** | Integer | อายุลูกค้า (ทำความสะอาด: แทนค่า Outlier ด้วย Median) | 0 – 100 ปี |
-| **occupation** | String | อาชีพ (ค่า Null ถูกแทนด้วย `"Unknown"`) | Teacher, Engineer, Unemployed, ... |
-| **risk_segment** | Categorical | ระดับความเสี่ยงที่ธนาคารกำหนด | `Low`, `Medium`, `High` |
-| **kyc_status** | Categorical | สถานะการยืนยันตัวตน | `Verified`, `Unverified`, `Pending` |
-| **registered_province** | String | จังหวัดที่ลงทะเบียน — ลูกค้าที่เชื่อมโยงกับบัญชีม้ามักอยู่ในจังหวัดชายแดนความเสี่ยงสูง | จังหวัดในประเทศไทย |
+**Account Age Days** measures the number of days since account creation. Newly created accounts (0–500 days) are disproportionately associated with mule activity, suggesting fraudsters frequently open fresh accounts to avoid detection.
 
-### `dim_accounts` — ข้อมูลบัญชี
+**Average Transaction Volume (3-Month)** captures the baseline spending behavior of each account. A sudden spike above this baseline — quantified by the **Spike Ratio** — serves as a primary signal for abnormal activity.
 
-| ชื่อคอลัมน์ | ประเภทข้อมูล | คำอธิบาย | ค่าที่เป็นไปได้ |
-| :--- | :--- | :--- | :--- |
-| **account_id** | String | รหัสบัญชีเฉพาะ | `A2xxxxx` |
-| **customer_id** | String | FK → `dim_customers` | — |
-| **account_status** | Categorical | สถานะบัญชี (มาตรฐานจาก Dirty Data) | `Active`, `Dormant`, `Closed` |
-| **account_age_days** | Integer | อายุบัญชีเป็นวัน — บัญชีใหม่ (0–500 วัน) มักเชื่อมโยงกับ Burner Mule | 0 – 3,650+ วัน |
-| **avg_tx_vol_last_3m** | Float | ปริมาณธุรกรรมเฉลี่ย 3 เดือน (บาท) — ค่าต่ำมากสำหรับ Sleeper Mule | ≥ 0 |
-| **is_mule_label** | Boolean | **Ground Truth Label** — `True` สำหรับบัญชีม้าที่ยืนยันแล้ว (~4%) | `True`, `False` |
-| **mule_type** | Categorical | ประเภทบัญชีม้า | `Burner`, `Sleeper`, `None` |
+**Dwell Time (Minutes)** represents the duration between receiving funds and transferring them out. Mule accounts consistently show dwell times under 5 minutes, reflecting deliberate rapid transit behavior to evade detection.
 
-### `dim_devices` — ข้อมูลอุปกรณ์
+### Data Sources
 
-| ชื่อคอลัมน์ | ประเภทข้อมูล | คำอธิบาย | ค่าที่เป็นไปได้ |
-| :--- | :--- | :--- | :--- |
-| **device_id** | String | รหัสอุปกรณ์เฉพาะ | `D3xxxxx` |
-| **device_type** | Categorical | ระบบปฏิบัติการ / แพลตฟอร์ม | `Android`, `iOS`, `Windows`, `macOS`, `Linux`, `Other` |
-| **is_jailbroken_rooted** | Boolean | Flag อุปกรณ์ที่ถูก Jailbreak หรือ Root (~8%) | `True`, `False` |
+This analysis draws on four core tables: customer profiles (`dim_customers`), account records (`dim_accounts`), device information (`dim_devices`), and transaction history (`fact_transactions`), comprising **20,000 simulated transactions** with realistic class imbalance.
 
-### `fact_transactions` — ข้อมูลธุรกรรม
-
-| ชื่อคอลัมน์ | ประเภทข้อมูล | คำอธิบาย | ค่าที่เป็นไปได้ |
-| :--- | :--- | :--- | :--- |
-| **transaction_id** | String | UUID ของธุรกรรม (ทำ Deduplication ระหว่าง Cleaning) | UUID |
-| **transaction_timestamp** | Datetime | วันเวลาของธุรกรรม | ช่วง 30 วัน |
-| **sender_account_id** | String | FK → `dim_accounts` (ผู้โอน) | — |
-| **receiver_account_id** | String | FK → `dim_accounts` (ผู้รับ) | — |
-| **device_id** | String | FK → `dim_devices` | — |
-| **amount** | Float | จำนวนเงินโอน (บาท) — ค่าติดลบถูกแก้เป็น Absolute Value | ≥ 0 |
-| **sender_balance_after** | Float | ยอดคงเหลือของผู้โอนหลังธุรกรรม | — |
-| **ip_address** | String | IP ต้นทาง (Null ถูกแทนด้วย `0.0.0.0`) | IPv4 |
-| **is_vpn_or_tor** | Boolean | Flag การใช้ VPN หรือ Tor | `True`, `False` |
-| **transaction_province** | String | จังหวัดที่ทำธุรกรรม | จังหวัดในประเทศไทย |
-| **channel** | Categorical | ช่องทางธุรกรรม | `Mobile`, `Online`, `ATM`, `Branch` |
-| **impossible_travel_flag** | Boolean | **(Engineered)** โอนข้ามจังหวัดภายใน 2 ชั่วโมง | `True`, `False` |
-
-### Engineered Features (จาก `feature_engineering.py`)
-
-| Feature | สูตร / Logic | สัญญาณที่บ่งบอก |
+| Table | Rows | Description |
 | :--- | :--- | :--- |
-| **spike_ratio** | `amount / avg_tx_vol_last_3m` | ค่า > 10 → Dormancy Spike |
-| **is_dormancy_spike** | `spike_ratio > 10.0` | Flag การเปิดใช้งาน Sleeper Mule |
-| **is_zero_balance_cashout** | `sender_balance_after / amount < 0.02` | รูปแบบการดูดเงินออกจนเกลี้ยงบัญชี |
-| **is_shared_device** | `distinct_accounts_per_device > 3` หรือ `per_ip > 3` | โครงสร้างพื้นฐานของ Mule Farm |
-| **dwell_time_mins** | ช่วงเวลาระหว่างรับเงินเข้า → โอนออก (นาที) | < 5 นาที → Pass-Through |
-| **is_pass_through** | `dwell_time_mins < 5.0` | พฤติกรรม Hit-and-Run |
-| **impossible_travel_flag** | โอนข้ามจังหวัดภายใน < 2 ชั่วโมง | ความผิดปกติทางภูมิศาสตร์ |
+| `dim_customers` | 5,000 | Customer demographics and KYC status |
+| `dim_accounts` | 6,000 | Account profiles; ~4% labeled as mule |
+| `dim_devices` | 2,400 | Device and OS information |
+| `fact_transactions` | 20,000 | Transaction history; ~5% fraud rate |
 
 ---
 
-## 6. โครงสร้าง Repository
+## 5. Data Dictionary
+
+### `dim_customers`
+
+| Column | Data Type | Description | Values / Range |
+| :--- | :--- | :--- | :--- |
+| **customer_id** | String | Unique customer identifier | `C1xxxxx` |
+| **age** | Integer | Customer age (outliers replaced with median) | 0 – 100 |
+| **occupation** | String | Occupation category (nulls filled as `"Unknown"`) | Teacher, Engineer, Unemployed, ... |
+| **risk_segment** | Categorical | Bank-assigned risk tier | `Low`, `Medium`, `High` |
+| **kyc_status** | Categorical | KYC verification status | `Verified`, `Unverified`, `Pending` |
+| **registered_province** | String | Home province — mule-linked customers skew toward high-risk border provinces | Thai provinces |
+
+### `dim_accounts`
+
+| Column | Data Type | Description | Values / Range |
+| :--- | :--- | :--- | :--- |
+| **account_id** | String | Unique account identifier | `A2xxxxx` |
+| **customer_id** | String | FK → `dim_customers` | — |
+| **account_status** | Categorical | Account status (standardized from dirty variants) | `Active`, `Dormant`, `Closed` |
+| **account_age_days** | Integer | Account age in days — Burner mules trend toward 0–500 days | 0 – 3,650+ |
+| **avg_tx_vol_last_3m** | Float | Average Transaction Volume (3-Month) in THB — very low for Sleeper mules | ≥ 0 |
+| **is_mule_label** | Boolean | **Ground Truth Label** — `True` for confirmed mule accounts (~4%) | `True`, `False` |
+| **mule_type** | Categorical | Mule archetype | `Burner`, `Sleeper`, `None` |
+
+### `dim_devices`
+
+| Column | Data Type | Description | Values / Range |
+| :--- | :--- | :--- | :--- |
+| **device_id** | String | Unique device identifier | `D3xxxxx` |
+| **device_type** | Categorical | OS / Platform | `Android`, `iOS`, `Windows`, `macOS`, `Linux`, `Other` |
+| **is_jailbroken_rooted** | Boolean | Flag for compromised devices (~8% prevalence) | `True`, `False` |
+
+### `fact_transactions`
+
+| Column | Data Type | Description | Values / Range |
+| :--- | :--- | :--- | :--- |
+| **transaction_id** | String | UUID — deduplicated during cleaning | UUID |
+| **transaction_timestamp** | Datetime | Transaction datetime (30-day window) | — |
+| **sender_account_id** | String | FK → `dim_accounts` (sender) | — |
+| **receiver_account_id** | String | FK → `dim_accounts` (receiver) | — |
+| **device_id** | String | FK → `dim_devices` | — |
+| **amount** | Float | Transfer amount in THB (negative values corrected to absolute) | ≥ 0 |
+| **sender_balance_after** | Float | Sender's remaining balance post-transaction | — |
+| **ip_address** | String | Originating IP (nulls filled with `0.0.0.0`) | IPv4 |
+| **is_vpn_or_tor** | Boolean | VPN / Tor anonymizer flag | `True`, `False` |
+| **transaction_province** | String | Province where transaction originated | Thai provinces |
+| **channel** | Categorical | Transaction channel | `Mobile`, `Online`, `ATM`, `Branch` |
+| **impossible_travel_flag** | Boolean | **(Engineered)** Cross-province activity within 2 hours | `True`, `False` |
+
+### Engineered Features (from `feature_engineering.py`)
+
+| Feature | Formula / Logic | Fraud Signal |
+| :--- | :--- | :--- |
+| **spike_ratio** | `amount / avg_tx_vol_last_3m` | > 10x → Dormancy Spike alert |
+| **is_dormancy_spike** | `spike_ratio > 10.0` | Sleeper mule activation flag |
+| **is_zero_balance_cashout** | `sender_balance_after / amount < 0.02` | Full account drain pattern |
+| **is_shared_device** | `distinct_accounts_per_device > 3` or `per_ip > 3` | Mule farm infrastructure |
+| **dwell_time_mins** | Time delta: inbound → outbound (same account) | < 5 min → Pass-Through behavior |
+| **is_pass_through** | `dwell_time_mins < 5.0` | Rapid transit / Hit-and-Run flag |
+| **impossible_travel_flag** | Cross-province within < 2 hours | Geographic anomaly |
+
+---
+
+## 6. Repository Structure
 
 ```
 DE471_Mule_account_detection/
 │
 ├── data/
-│   ├── mule_account_mock_data.xlsx      # ชุดข้อมูลดิบ (Raw) — Star Schema 4 Sheets
-│   ├── mule_data_cleaned.xlsx           # ชุดข้อมูลหลัง Data Cleaning
-│   └── mule_data_features.xlsx          # ชุดข้อมูล Feature-Engineered (พร้อมสำหรับ EDA/Model)
+│   ├── mule_account_mock_data.xlsx      # Raw AI-generated dataset (Star Schema, 4 sheets)
+│   ├── mule_data_cleaned.xlsx           # Post-cleaning dataset
+│   └── mule_data_features.xlsx          # Feature-engineered dataset (EDA/model-ready)
 │
 ├── notebooks/
-│   └── EDA_Mule_Detection.twbx          # Tableau Workbook — การวิเคราะห์ 5W1H
+│   └── EDA_Mule_Detection.twbx          # Tableau Workbook — 5W1H EDA visualizations
 │
 ├── src/
-│   ├── data_gen.py                       # Script สร้างชุดข้อมูลสังเคราะห์ (20,000 ธุรกรรม)
-│   ├── data_clean.py                     # Pipeline ทำความสะอาดข้อมูล
-│   └── feature_engineering.py           # คำนวณ Behavioral Features 7 ตัว
+│   ├── data_gen.py                       # Synthetic dataset generator (20,000 transactions)
+│   ├── data_clean.py                     # Data cleaning pipeline
+│   └── feature_engineering.py           # Behavioral feature engineering (7 fraud signals)
 │
 ├── presentation/
-│   └── Project Canvas MTN GROUP.pptx    # Project Canvas Slide Deck
+│   └── Project Canvas MTN GROUP.pptx    # Project Canvas slide deck
+│
+├── images/                              # EDA chart exports for README
 │
 └── README.md
 ```
 
 ---
 
-## 7. กระบวนการทำความสะอาดข้อมูล (Data Cleaning Process)
+## 7. Data Cleaning Process
 
-ชุดข้อมูลดิบถูกสร้างขึ้นพร้อมกับ Dirty Data ที่จงใจฝังไว้ เพื่อจำลองสภาพแวดล้อมจริงของธนาคาร กระบวนการทำความสะอาดจึงดำเนินการดังนี้
+The raw dataset was intentionally generated with dirty data to simulate a real banking environment. The cleaning pipeline applied the following rules:
 
-### 1. Fact Transactions
-- **Duplicate Rows:** ตรวจสอบและลบแถวซ้ำซ้อนโดยใช้ `transaction_id` เป็น Key (พบ 3 แถวซ้ำ)
-- **Negative Amount:** แก้ไขค่า Amount ติดลบให้เป็น Absolute Value เพื่อรักษาสัญญาณการฉ้อโกง
-- **Null IP Address:** แทนค่า Null ด้วย `0.0.0.0` แทนการลบแถว เพื่อป้องกันการทำลาย Fraud Signal
+### 1. `fact_transactions`
+- **Duplicate Rows:** Detected and removed using `transaction_id` as the deduplication key (3 duplicate rows removed)
+- **Negative Amount:** Corrected negative amounts to their absolute values — preserving the transaction record and its fraud signal
+- **Null IP Address:** Filled with `0.0.0.0` instead of dropping the row — to avoid destroying fraud signals embedded in those records
 
-### 2. Dim Accounts
-- **Account Status:** มาตรฐานค่าที่ไม่สม่ำเสมอ เช่น `"ACT"`, `"Actv"`, `"active"` ให้เป็น `"Active"`
+### 2. `dim_accounts`
+- **Account Status:** Standardized inconsistent variants (e.g., `"ACT"`, `"Actv"`, `"active"`) to the canonical `"Active"` value
 
-### 3. Dim Customers
-- **Age Outliers:** แทนค่าอายุที่ผิดปกติ (เช่น -5, 150) ด้วยค่า Median แทนการลบแถวออก เนื่องจากลูกค้าเหล่านี้อาจเป็นบัญชีม้า
-- **Null Occupation:** แทนค่า Null ด้วย `"Unknown"`
+### 3. `dim_customers`
+- **Age Outliers:** Replaced invalid ages (e.g., -5, 150) with the median — rows were retained rather than dropped, as these accounts may be mule-linked
+- **Null Occupation:** Filled with `"Unknown"`
 
-> **หลักการสำคัญ:** ไม่ลบ Outliers ออก เนื่องจาก Outlier คือสัญญาณของการฉ้อโกง (Rare Fraud Class) การลบออกจะทำลาย Fraud Signal ที่มีคุณค่าที่สุด
+> **Key Principle:** Outliers are NOT removed. In an imbalanced fraud dataset, outliers often represent the rare fraud class. Removing them would destroy the most valuable detection signals.
 
 ---
 
-## 8. การวิเคราะห์ข้อมูลเชิงสำรวจ (Exploratory Data Analysis: EDA)
+## 8. Analysis/Model
 
-กลยุทธ์หลักที่ใช้ในการวิเคราะห์ข้อมูลที่มีความไม่สมดุลสูง (Class Imbalance 1:42.6):
-- ใช้ **Log Scale** บน Y-Axis เพื่อให้มองเห็น Minority Class (บัญชีม้า) ได้ชัดเจน แทนที่จะถูกกลืนหายโดย Normal Class
-- ใช้ **Boxplot** เพื่อแสดงการกระจายและ Outlier ของตัวแปรอย่าง Spike Ratio
-- ใช้ **สีที่มีความตัดกันสูง** (น้ำเงิน = ปกติ, แดง = บัญชีม้า) เพื่อเน้น Minority Class ในทุกกราฟ
-- ไม่ลบ Outlier ออก เพราะค่าสุดขั้วคือสัญญาณสำคัญของการฉ้อโกง
+### Exploratory Data Analysis (EDA)
 
-### Dashboard ภาพรวม (EDA Overview)
+The primary strategy for handling the severe class imbalance (1:42.6) in visualizations:
+- **Log Scale** on the Y-Axis — makes the Minority Class (mule accounts) visible without being swallowed by the Normal Class
+- **Boxplots** — reveal the distribution spread and outliers of key metrics like Spike Ratio
+- **High Contrast Colors** (Blue = Normal, Red = Mule) — consistently applied across all charts to highlight the Minority Class in the foreground
+- Outliers are never removed — extreme values are the fraud signal
+
+### EDA Dashboard Overview
 
 ![EDA Dashboard Overview](images/8_dashboard_overview.png)
-*ภาพรวม Dashboard แสดงทุก Visualization ในหน้าเดียว — Dataset: 20,000 ธุรกรรม | Mule: 459 (4%) | Normal: 19,541 (96%) | Ratio 1:24*
+*Full EDA Dashboard — Dataset: 20,000 transactions | Mule: 459 (4%) | Normal: 19,541 (96%) | Ratio 1:24*
 
 ---
 
-### กราฟที่ 1 — Who & What: การกระจายตัวของ Class (Class Imbalance)
+### Chart 1 — Who & What: Class Distribution (Imbalance 1:42.6)
 
 ![Class Distribution](images/1_class_distribution.png)
-*กราฟ Bar Chart แบบ Log Scale แสดงจำนวนธุรกรรมแยกตามประเภทบัญชี*
+*Log-scale Bar Chart showing transaction count by mule type: Burner (257), Normal (19,541), Sleeper (202)*
 
-กราฟนี้ตอบคำถาม **"WHO are the mule accounts?"** โดยแสดงให้เห็นความไม่สมดุลของข้อมูลอย่างชัดเจน บัญชีม้าคิดเป็นเพียง **2.3% ของธุรกรรมทั้งหมด** (459 จาก 20,000) โดยแบ่งเป็น Burner 257 ธุรกรรม และ Sleeper 202 ธุรกรรม ความไม่สมดุลในระดับ **1:42.6** นี้ยืนยันว่าจำเป็นต้องใช้เทคนิคพิเศษในการตรวจจับ เช่น Log Scale และการเน้น Minority Class ในการแสดงผล แทนที่จะใช้กราฟปกติที่บัญชีม้าจะแทบมองไม่เห็น
+This chart answers **"WHO are the mule accounts?"** The severe class imbalance is immediately visible — mule accounts represent only **2.3% of all transactions** (459 out of 20,000). The 1:42.6 ratio confirms that standard detection techniques will fail, and specialized approaches such as Log Scale visualization and Imbalanced Data Handling are required. Without Log Scale, the Burner and Sleeper bars would be nearly invisible against the Normal bar.
 
 ---
 
-### กราฟที่ 2 — Who & What: ช่องทางธุรกรรมของบัญชีม้าแต่ละประเภท
+### Chart 2 — Who & What: Transaction Count by Mule Type and Channel
 
 ![Mule Type by Channel](images/3_mule_type_by_channel.png)
-*Stacked Bar Chart แสดงจำนวนธุรกรรมของ Burner และ Sleeper แยกตาม Channel*
+*Stacked Bar Chart showing transaction count for Burner and Sleeper accounts broken down by channel (ATM, Branch, Mobile, Online)*
 
-กราฟนี้ตอบคำถาม **"WHAT channels do mule accounts use?"** พบว่า Burner Accounts ใช้ช่องทาง **Mobile และ Online** สูงกว่า Sleeper อย่างเห็นได้ชัด ในขณะที่ Sleeper Accounts มีสัดส่วน **ATM และ Online** ที่สูงกว่าเมื่อเทียบกับตัวเอง ซึ่งบ่งชี้ว่าบัญชีม้าทั้งสองประเภทมีกลยุทธ์การหลีกเลี่ยงการตรวจจับที่แตกต่างกัน — Burner เน้นความเร็วผ่าน Mobile ในขณะที่ Sleeper หลีกเลี่ยงการสร้างรูปแบบที่ชัดเจนด้วยการกระจาย Channel
+This chart answers **"WHAT channels do mule accounts use?"** Burner accounts dominate across all transaction channels, while Sleeper accounts show higher relative activity through ATM and Online channels. This divergence suggests different evasion strategies between mule types — Burner mules favor the speed and anonymity of Mobile, while Sleeper mules spread activity across channels to blend in with normal behavior patterns.
 
 ---
 
-### กราฟที่ 3 — What: การกระจายของ Spike Ratio (สัญญาณที่แข็งแกร่งที่สุด)
+### Chart 3 — What: Spike Ratio Distribution (Strongest Single Behavioral Signal)
 
 ![Spike Ratio Distribution](images/4_spike_ratio_boxplot.png)
-*Boxplot แบบ Log Scale เปรียบเทียบ Spike Ratio ระหว่างบัญชีปกติ (เหลือง) และบัญชีม้า (แดง) พร้อม Reference Line ที่ Alert Threshold 10x*
+*Log-scale Boxplot comparing Spike Ratio between Normal (blue) and Mule (red) accounts, with a dashed Reference Line at the Alert Threshold of 10x*
 
-กราฟนี้ตอบคำถาม **"WHAT is the quantitative threshold that separates mule transactions?"** และพิสูจน์ได้ว่า Spike Ratio คือสัญญาณที่ทรงพลังที่สุดในชุดข้อมูลนี้ — บัญชีม้ามีค่าเฉลี่ย Spike Ratio **44 เท่า** เมื่อเทียบกับ **5 เท่า** ของบัญชีปกติ กราฟ Boxplot แบบ Log Scale ช่วยให้เห็นความแตกต่างที่ชัดเจน โดย Median ของบัญชีม้าพุ่งอยู่เหนือ Alert Threshold (10x) อย่างเด่นชัด ในขณะที่ Median ของบัญชีปกติอยู่ต่ำกว่า 10x อย่างมีนัยสำคัญ
+This chart answers **"WHAT is the Spike Ratio distribution between mule and normal accounts?"** Mule accounts exhibit a Spike Ratio averaging **44x** compared to **5x** for normal accounts. The majority of mule transactions exceed the 10x alert threshold, making Spike Ratio the strongest single behavioral signal for detection. The Log Scale is essential here — on a linear axis, the extreme mule values would compress all normal values to the bottom and obscure the threshold boundary.
 
 ---
 
-### กราฟที่ 4 — Where: ความเสี่ยงทางภูมิศาสตร์รายจังหวัด
+### Chart 4 — Where: Geographic Risk by Province
 
 ![Geographic Risk Map](images/6_geographic_map.png)
-*Choropleth Map แสดงอัตราส่วน Mule Rate รายจังหวัดทั่วประเทศไทย (สีแดงเข้ม = ความเสี่ยงสูง)*
+*Choropleth Map of Thailand showing Mule Rate by Province — darker red indicates higher mule concentration*
 
-กราฟนี้ตอบคำถาม **"WHERE should fraud prevention efforts be prioritized geographically?"** ผลการวิเคราะห์พบว่าความเสี่ยงกระจายตัวทั่วทุกภูมิภาค **โดยไม่มีจังหวัดใดจุดเดียวที่เป็น Hotspot หลัก** รูปแบบนี้บ่งชี้ว่าเครือข่ายบัญชีม้าปฏิบัติการในหลายภูมิภาคพร้อมกัน ซึ่งหมายความว่าการใช้ Geographic Profiling เพียงอย่างเดียวไม่เพียงพอ และจำเป็นต้องใช้ร่วมกับ Behavioral Signal อื่นๆ
+This chart answers **"WHERE should fraud prevention efforts be prioritized geographically?"** Fraud risk is broadly distributed across Thai provinces with **no single dominant hotspot**. This pattern suggests that mule networks operate across multiple regions simultaneously, making geographic profiling alone insufficient as a detection strategy. Border provinces such as Chiang Rai, Kanchanaburi, and Ubon Ratchathani show elevated mule rates, but the distribution confirms that behavioral signals must always accompany geographic filters.
 
 ---
 
-### กราฟที่ 5 — Where & Who: Account Age vs. Transaction Volume (Scatter Plot)
+### Chart 5 — Where & Who: Account Age vs. Average Transaction Volume (3-Month)
 
 ![Account Age Scatter Plot](images/5_account_age_scatter.png)
-*Scatter Plot แสดงความสัมพันธ์ระหว่าง Account Age Days (แกน X) และ Avg Tx Vol Last 3M (แกน Y) พร้อม Risk Threshold ที่ 500 วัน*
+*Scatter Plot of Account Age Days (X-axis) vs. Average Transaction Volume 3-Month (Y-axis) — Red = Mule, Blue = Normal — with a vertical Risk Threshold line at 500 days*
 
-กราฟนี้ตอบคำถาม **"WHICH accounts exhibit suspicious behavior based on account age?"** บัญชีม้า (จุดสีแดง) กระจุกตัวอยู่ใน **ช่วง 0–500 วัน** อย่างเด่นชัด ยืนยันว่าบัญชีที่เพิ่งเปิดใหม่มีความเสี่ยงสูงที่สุดโดยไม่ขึ้นกับปริมาณธุรกรรม นอกจากนี้ยังพบว่าบัญชีม้ามีการกระจายตัว Avg Tx Vol ที่หลากหลาย ทำให้ไม่สามารถใช้ Volume เพียงอย่างเดียวในการตัดสิน จำเป็นต้องใช้ Account Age ร่วมด้วยเสมอ
+This chart answers **"WHICH accounts exhibit suspicious behavior based on account age and transaction volume?"** Mule accounts (red dots) cluster disproportionately within the first **500 Account Age Days**, confirming that newly created accounts pose the highest fraud risk regardless of transaction volume. The scatter also shows that mule accounts span the full range of Average Transaction Volume (3-Month), proving that volume alone cannot isolate mule accounts — Account Age Days must always be combined with behavioral signals.
 
 ---
 
-### กราฟที่ 6 — When & How: Dormancy Spike และ Zero Balance Rate
+### Chart 6 — When & How: Account Draining Behavior — Dormancy Spike & Zero Balance Rate
 
 ![Dormancy Spike and Zero Balance](images/2_dormancy_spike_zero_balance.png)
-*Bar Chart เปรียบเทียบ Dormancy Spike Rate และ Zero Balance Cashout Rate ระหว่างบัญชีปกติ (น้ำเงิน) และบัญชีม้า (แดง) พร้อม Reference Line ที่ Alert Threshold 50%*
+*Bar Chart comparing Dormancy Spike Rate and Zero Balance Cashout Rate between Normal (blue) and Mule (red) accounts, with a dashed Alert Threshold line at 50%*
 
-กราฟนี้ตอบคำถาม **"HOW do mule accounts drain funds after receiving them?"** ผลการวิเคราะห์พบความแตกต่างที่ชัดเจนมาก:
-- **Dormancy Spike Rate:** บัญชีม้า **77%** vs บัญชีปกติ **24%** — สูงกว่า Alert Threshold (50%) อย่างมีนัยสำคัญ
-- **Zero Balance Cashout Rate:** บัญชีม้า **61%** vs บัญชีปกติ **31%** — ยืนยันพฤติกรรมดูดเงินออกจนเกลี้ยงบัญชี
+This chart answers **"HOW do mule accounts drain funds after receiving them?"** Both behavioral flags exceed the 50% Alert Threshold for mule accounts:
+- **Dormancy Spike Rate:** Mule **77%** vs Normal **24%** — a 3.2× difference that significantly exceeds the threshold
+- **Zero Balance Cashout Rate:** Mule **61%** vs Normal **31%** — confirms the account-draining pattern expected in a terminal mule node
 
-ทั้งสองสัญญาณนี้เกินค่า Alert Threshold 50% ในกลุ่มบัญชีม้า ซึ่งหมายความว่าสามารถนำไปใช้เป็นกฎการตรวจจับได้ทันที
+Both signals together form the basis for an immediately implementable detection rule.
 
 ---
 
-### กราฟที่ 7 — When: Dwell Time (หน้าต่างการหลีกเลี่ยง 5 นาที)
+### Chart 7 — When: Dwell Time Distribution (The 5-Minute Evasion Window)
 
 ![Dwell Time Distribution](images/7_dwell_time.png)
-*Histogram แสดงการกระจายของ Dwell Time (นาที) หลังจากรับเงินเข้า แยกระหว่างบัญชีม้า (แดง) และบัญชีปกติ (น้ำเงิน) พร้อม Reference Line ที่ 5-Minute Evasion Window*
+*Histogram of Dwell Time (minutes) after funds are received — Red = Mule, Blue = Normal — with a Reference Line marking the 5-Minute Evasion Window*
 
-กราฟนี้ตอบคำถาม **"WHEN are illicit funds moved out of the suspected account?"** และเป็นหลักฐานที่แข็งแกร่งที่สุดของพฤติกรรม Rapid Transit — เงินในบัญชีม้า **54% ถูกโอนออกภายใน 4 นาที** ของการรับ (43 จาก 79 ธุรกรรม) กราฟแสดงให้เห็นชัดว่าบัญชีม้า (สีแดง) กระจุกตัวอยู่ที่ช่วง 1–4 นาที อย่างหนาแน่น ในขณะที่บัญชีปกติ (สีน้ำเงิน) กระจายตัวออกไปในช่วงเวลาที่นานกว่า ยืนยันว่า **Dwell Time < 5 นาที** เป็น Alert Rule ที่ใช้งานได้จริง
+This chart answers **"When illicit funds enter a suspected account, how quickly are they moved to evade detection?"** Mule accounts act as rapid transit — **54% of mule transactions (43 out of 79) transferred funds out within 4 minutes** of receipt. The mule bars (red) cluster heavily in the 1–4 minute range, while normal accounts (blue) are distributed more evenly over longer periods. This confirms that **Dwell Time < 5 minutes** following a large inflow is a reliable, real-time-actionable detection rule.
 
 ---
 
-## 9. ผลการวิเคราะห์ (Key Findings and Insights)
+## 9. Findings and Insights
 
-### สรุปผลการวิเคราะห์จากทุก Visualization
+### Geographic Risk
+Fraud risk is broadly distributed across Thai provinces with no single dominant hotspot. This pattern suggests that mule networks operate across multiple regions simultaneously, making geographic profiling alone insufficient as a detection strategy.
 
-| # | Finding | ตัวเลขสำคัญ | นัยสำคัญ |
+### Account Profiling
+Mule accounts — both Burner (257 transactions) and Sleeper (202 transactions) — are disproportionately concentrated among accounts aged **0–500 days**. Furthermore, mule accounts exhibit a Spike Ratio averaging **44x** compared to **5x** for normal accounts, indicating sudden large inflows relative to historical behavior. This confirms that transaction volume alone cannot distinguish mule accounts from legitimate ones; **multi-feature behavioral analysis is required**.
+
+### Critical Evasion Window
+A strong rapid transit pattern was observed across flagged accounts. Fraudulent funds are typically transferred out **within 5 minutes** of receipt. This narrow evasion window is further supported by:
+- **77%** of mule transactions trigger the dormancy spike flag, compared to **24%** for normal accounts
+- **61%** exhibit zero balance cashout behavior, compared to **31%** for normal accounts
+
+### Summary of Key Findings
+
+| # | Finding | Key Numbers | Implication |
 | :---: | :--- | :--- | :--- |
-| 1 | **Class Imbalance รุนแรง** | Mule 2.3% (459/20,000) อัตราส่วน 1:42.6 | จำเป็นต้องใช้ Log Scale และเทคนิค Imbalanced Data |
-| 2 | **Spike Ratio คือสัญญาณที่แข็งแกร่งที่สุด** | Mule เฉลี่ย 44x vs Normal 5x | ส่วนใหญ่ของบัญชีม้าเกิน Alert Threshold 10x |
-| 3 | **Account Age ≤ 500 วัน คือกลุ่มเสี่ยงหลัก** | Mule กระจุกใน 0–500 วัน | บัญชีใหม่ + Spike Ratio สูง = ความเสี่ยงสูงมาก |
-| 4 | **Dormancy Spike** | 77% ของ Mule vs 24% ของ Normal | เกิน Alert Threshold 50% อย่างมีนัยสำคัญ |
-| 5 | **Zero Balance Cashout** | 61% ของ Mule vs 31% ของ Normal | ยืนยันพฤติกรรมดูดเงินออกจนหมดบัญชี |
-| 6 | **5-Minute Evasion Window** | 54% ของ Mule โอนออกภายใน 4 นาที | หน้าต่างการแทรกแซงแคบมาก ต้องการ Near Real-Time Alert |
-| 7 | **ไม่มี Geographic Hotspot เดียว** | ความเสี่ยงกระจายทั่วประเทศ | Geographic Profiling ต้องใช้ร่วมกับ Behavioral Signal เสมอ |
+| 1 | Severe Class Imbalance | Mule 2.3% (459/20,000) — Ratio 1:42.6 | Log Scale and Imbalanced Data Handling are mandatory |
+| 2 | Spike Ratio is the strongest single signal | Mule avg 44x vs Normal 5x | Majority of mule transactions exceed the 10x Alert Threshold |
+| 3 | Account Age ≤ 500 days is the highest-risk segment | Mule accounts cluster in 0–500 days | New account + high Spike Ratio = critical risk combination |
+| 4 | Dormancy Spike flag | 77% of Mule vs 24% of Normal | Exceeds the 50% Alert Threshold with high separation |
+| 5 | Zero Balance Cashout | 61% of Mule vs 31% of Normal | Confirms account-draining behavior in terminal mule nodes |
+| 6 | 5-Minute Evasion Window | 54% of Mule transferred out within 4 minutes | Narrow intervention window — Near Real-Time Alert required |
+| 7 | No single Geographic Hotspot | Fraud distributed nationwide | Geographic profiling must always be combined with behavioral signals |
 
 ---
 
-## 📝 บทสรุป (Conclusion)
-
-จากการวิเคราะห์ข้อมูล สามารถสรุปได้ว่าบัญชีม้าสามารถระบุได้จากการรวมกันของสัญญาณพฤติกรรม ดังนี้
-
-- บัญชีม้าส่วนใหญ่เป็นบัญชีที่มีอายุ **ไม่เกิน 500 วัน** บ่งชี้ว่ามิจฉาชีพนิยมเปิดบัญชีใหม่เพื่อหลีกเลี่ยงการตรวจจับ
-- ค่า Spike Ratio ของบัญชีม้าสูงกว่าบัญชีปกติถึง **~8.8 เท่า** (เฉลี่ย 44x vs 5x) ซึ่งเป็นสัญญาณที่ชัดเจนและวัดผลได้
-- เงินในบัญชีม้าถูกโอนออกอย่างรวดเร็ว โดยมี **Dwell Time น้อยกว่า 5 นาที** ในกรณีส่วนใหญ่ ทำให้หน้าต่างการแทรกแซงแคบมาก
-- การใช้งาน Device/IP ร่วมกันระหว่างหลายบัญชี เป็นสัญญาณของ **Mule Farm** ที่ดำเนินการอย่างเป็นระบบ
-- ไม่มีจังหวัดใดจุดเดียวที่เป็น Hotspot หลัก แสดงว่าเครือข่ายม้ากระจายตัวทั่วประเทศ
-
----
-
-## 📝 ข้อเสนอแนะและผลกระทบ (Recommendation / Action and Impact)
+## 📝 Recommendation/Action and Impact
 
 ### Rule-Based Detection Alerts
 
-ควรนำกฎการตรวจจับต่อไปนี้ไปใช้เป็น Near Real-Time Alert ในระบบ Transaction Monitoring ของธนาคาร:
+Based on the findings, the following behavioral rules should be implemented as near real-time alerts within the bank's transaction monitoring system:
 
-- **Rule 1:** Flag บัญชีใดก็ตามที่มี Spike Ratio เกิน **10 เท่า** ของค่าเฉลี่ย 3 เดือน
-- **Rule 2:** Flag ธุรกรรมใดก็ตามที่ Dwell Time ต่ำกว่า **5 นาที** หลังจากรับเงินก้อนใหญ่เข้า
-- **Rule 3:** Flag บัญชีที่มีอายุ **ต่ำกว่า 500 วัน** และพร้อมกันกระตุ้น Dormancy Spike และ Zero Balance Cashout
+- **Rule 1:** Flag any account where **Spike Ratio exceeds 10x** the 3-month average
+- **Rule 2:** Flag any transaction where **Dwell Time is under 5 minutes** following a large inflow
+- **Rule 3:** Flag accounts aged **under 500 days** that simultaneously trigger dormancy spike and zero balance cashout behaviors
 
 ### Operational Response
 
-บัญชีที่ถูก Flag ควรถูกระงับธุรกรรมชั่วคราว (Temporary Transaction Hold) รอการตรวจสอบโดยทีม Fraud Operations ซึ่งช่วยให้สามารถแทรกแซงได้ภายในหน้าต่างการหลบเลี่ยงที่วิกฤต ก่อนที่เงินจะถูกโอนออกไปชั้นถัดไป
+Flagged accounts should be placed under **temporary transaction holds** pending manual review by the fraud operations team. This supports faster intervention within the critical evasion window before funds are dispersed further.
 
 ### Balancing Security and Customer Experience
 
-เพื่อลด False Positives ควรกำหนดให้ต้องมีการกระตุ้น Flag **อย่างน้อย 2 สัญญาณพร้อมกัน** ก่อนที่จะ Escalate ซึ่งลดความเสี่ยงในการรบกวนลูกค้าที่ถูกต้องตามกฎหมาย ในขณะที่ยังคงรักษาความสามารถในการตรวจจับไว้
+To minimize false positives, alerts should require **at least two behavioral flags to trigger simultaneously** before escalation. This reduces the risk of disrupting legitimate customers while maintaining detection sensitivity.
 
 ### Expected Impact
 
-- ลดการหลีกเลี่ยงของบัญชีม้าภายในหน้าต่าง 5 นาที
-- รองรับการปฏิบัติตามข้อกำหนด AML ของธนาคารแห่งประเทศไทย
-- ลดความสูญเสียทางการเงินจาก APP Scam
+- Reduce mule account evasion within the 5-minute window
+- Support compliance with Bank of Thailand's anti-money laundering requirements
+- Minimize financial losses from APP scams
 
 ---
-
-## 🚀 วิธีการรันโปรแกรม (How to Run)
-
-```bash
-# 1. ติดตั้ง Dependencies
-pip install pandas numpy openpyxl faker
-
-# 2. สร้างชุดข้อมูลสังเคราะห์
-python src/data_gen.py
-# Output: data/mule_account_mock_data.xlsx
-
-# 3. ทำความสะอาดข้อมูล
-python src/data_clean.py
-# Output: data/mule_data_cleaned.xlsx
-
-# 4. สร้าง Engineered Features
-python src/feature_engineering.py
-# Output: data/mule_data_features.xlsx
-
-# 5. เปิด Tableau Workbook สำหรับ EDA
-# เปิดไฟล์ notebooks/EDA_Mule_Detection.twbx ใน Tableau Desktop
-```
-
----
-
-*Modified from Bill Schmarzo's Machine Learning Canvas and Jasmine Vasandani's Data Science Workflow Canvas for SWU*
