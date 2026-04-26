@@ -299,7 +299,7 @@ A strong rapid transit pattern was observed across flagged accounts. Fraudulent 
 
 ---
 
-## 📝 Recommendation/Action and Impact
+## Recommendation/Action and Impact
 
 ### Rule-Based Detection Alerts
 
