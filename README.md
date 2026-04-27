@@ -2,7 +2,6 @@
 Data Analytics project for detecting suspicious mule account activity in a simulated Thai retail banking environment.
 
 **Designed by:** MTN (MUMTENGNHONG) GROUP  
-**Date:** 18 January 2026  
 **Course:** DE471 Data Analytics & Business Intelligence
 
 ---
