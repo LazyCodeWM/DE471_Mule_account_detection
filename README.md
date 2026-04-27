@@ -2,6 +2,7 @@
 Data Analytics project for detecting suspicious mule account activity in a simulated Thai retail banking environment.
 
 **Designed by:** MTN (MUMTENGNHONG) GROUP  
+**Date:** 18 January 2026  
 **Course:** DE471 Data Analytics & Business Intelligence
 
 ---
@@ -129,8 +130,8 @@ This analysis draws on four core tables: customer profiles (`dim_customers`), ac
 
 | Feature | Formula / Logic | Fraud Signal |
 | :--- | :--- | :--- |
-| **spike_ratio** | `amount / avg_tx_vol_last_3m` | > 10x → Dormancy Spike alert |
-| **is_dormancy_spike** | `spike_ratio > 10.0` | Sleeper mule activation flag |
+| **spike_ratio** | `amount / avg_tx_vol_last_3m` | > 5x → Dormancy Spike alert |
+| **is_dormancy_spike** | `spike_ratio > 5.0` | Sleeper mule activation flag |
 | **is_zero_balance_cashout** | `sender_balance_after / amount < 0.02` | Full account drain pattern |
 | **is_shared_device** | `distinct_accounts_per_device > 3` or `per_ip > 3` | Mule farm infrastructure |
 | **dwell_time_mins** | Time delta: inbound → outbound (same account) | < 5 min → Pass-Through behavior |
@@ -156,9 +157,6 @@ DE471_Mule_account_detection/
 │   ├── data_gen.py                       # Synthetic dataset generator (20,000 transactions)
 │   ├── data_clean.py                     # Data cleaning pipeline
 │   └── feature_engineering.py           # Behavioral feature engineering (7 fraud signals)
-│
-├── presentation/
-│   └── Project Canvas MTN GROUP.pptx    # Project Canvas slide deck
 │
 ├── images/                              # EDA chart exports for README
 │
@@ -200,7 +198,7 @@ The primary strategy for handling the severe class imbalance (1:42.6) in visuali
 ### EDA Dashboard Overview
 
 ![EDA Dashboard Overview](images/8_dashboard_overview.png)
-*Full EDA Dashboard — Dataset: 20,000 transactions | Mule: 459 (4%) | Normal: 19,541 (96%) | Ratio 1:24*
+*Full EDA Dashboard — Dataset: 20,000 transactions | Mule: 459 (2.3%) | Normal: 19,541 (97.7%) | Ratio 1:42.6*
 
 ---
 
@@ -267,7 +265,7 @@ Both signals together form the basis for an immediately implementable detection 
 ![Dwell Time Distribution](images/7_dwell_time.png)
 *Histogram of Dwell Time (minutes) after funds are received — Red = Mule, Blue = Normal — with a Reference Line marking the 5-Minute Evasion Window*
 
-This chart answers **"When illicit funds enter a suspected account, how quickly are they moved to evade detection?"** Mule accounts act as rapid transit — **54% of mule transactions (43 out of 79) transferred funds out within 4 minutes** of receipt. The mule bars (red) cluster heavily in the 1–4 minute range, while normal accounts (blue) are distributed more evenly over longer periods. This confirms that **Dwell Time < 5 minutes** following a large inflow is a reliable, real-time-actionable detection rule.
+This chart answers **"When illicit funds enter a suspected account, how quickly are they moved to evade detection?"** Mule accounts act as rapid transit — **54% of mule transactions (43 out of 79) transferred funds out within 5 minutes** of receipt. The mule bars (red) cluster heavily in the 1–4 minute range, while normal accounts (blue) are distributed more evenly over longer periods. This confirms that **Dwell Time < 5 minutes** following a large inflow is a reliable, real-time-actionable detection rule.
 
 ---
 
